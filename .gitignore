@@ -1,0 +1,10 @@
+# Executáveis
+bin/
+
+# Objetos e binários intermediários
+obj/
+*.o
+
+# Arquivos de depuração e logs
+*.log
+*.gch
