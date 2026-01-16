@@ -24,3 +24,14 @@ coordinate_t get_variable(symbol_table_t *table, const char *name) {
     coordinate_t empty = {0, 0, 0};
     return empty;
 }
+
+void dump_symbol_table(symbol_table_t *table) {
+    printf("\n========== DEBUG: TABELA DE SIMBOLOS ==========\n");
+    printf("Total de variaveis: %d\n", table->count);
+    for (int i = 0; i < table->count; i++) {
+        printf("[%d] ID: '%s' -> Valor: (x:%d, y:%d, z:%d)\n", 
+               i, table->vars[i].name, 
+               table->vars[i].coord.x, table->vars[i].coord.y, table->vars[i].coord.z);
+    }
+    printf("================================================\n\n");
+}

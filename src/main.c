@@ -33,22 +33,24 @@ int main(int argc, char *argv[]) {
     coordinate_t current = {0, 0, 0};
 
     while (*ptr != '\0') {
+        // Pular espaços e linhas vazias
         while (*ptr && isspace(*ptr)) ptr++;
         if (*ptr == '\0') break;
 
         char *ptr_antes = ptr;
         token_t t = get_next_token(&ptr);
 
-        // Verifica se é uma atribuição (ex: p1 = ...)
+        // 3. Verifica se o próximo token é '=' (Atribuição)
         char *ptr_temp = ptr;
         token_t next = get_next_token(&ptr_temp);
 
         if (next.type == TOKEN_SYMBOL && next.text[0] == '=') {
             char var_name[32];
             strncpy(var_name, t.text, 31);
-            ptr = ptr_temp; 
+            var_name[31] = '\0';
+            ptr = ptr_temp; // Avança para depois do '='
 
-            // Espia se depois do '=' vem um número direto (ex: fator = 5)
+            // Espia se é um número direto (ex: fator = 5)
             char *ptr_check = ptr;
             token_t val_check = get_next_token(&ptr_check);
 
@@ -59,16 +61,19 @@ int main(int argc, char *argv[]) {
                 printf("Definido escalar: %s = %d\n", var_name, val_check.value);
             } 
             else {
-                // Atribuição de resultado de comando (ex: p1 = CREATE(1,2,3))
+                // Atribuição de resultado de comando (p1 = CREATE ou p3 = ADD)
                 ptr = ptr_temp; 
                 command_node_t cmd = parse_line(&ptr, &symbol_table);
                 
                 if (strcmp(cmd.command, "CREATE") == 0) {
-                    // Resolve argumentos (números ou variáveis)
                     int v[3] = {0,0,0};
-                    for(int i=0; i<3 && i < cmd.arg_count; i++) {
-                        v[i] = (cmd.args[i].type == ARG_NUMBER) ? 
-                                cmd.args[i].value : get_variable(&symbol_table, cmd.args[i].var_name).x;
+                    for(int i=0; i < 3 && i < cmd.arg_count; i++) {
+                        if (cmd.args[i].type == ARG_NUMBER) {
+                            v[i] = cmd.args[i].value;
+                        } else {
+                            // Se for variável dentro do CREATE, pega o X
+                            v[i] = get_variable(&symbol_table, cmd.args[i].var_name).x;
+                        }
                     }
                     current = new_coord(v[0], v[1], v[2]);
                     set_variable(&symbol_table, var_name, current);
@@ -84,15 +89,20 @@ int main(int argc, char *argv[]) {
             }
         } 
         else {
-            // Comando Direto (ex: SCALE(2), PRINT(p1))
+            // 4. Comando Direto (ex: SCALE(fator), PRINT(p3))
             ptr = ptr_antes; 
             command_node_t cmd = parse_line(&ptr, &symbol_table);
 
             if (strcmp(cmd.command, "CREATE") == 0) {
-                int x = (cmd.args[0].type == ARG_NUMBER) ? cmd.args[0].value : get_variable(&symbol_table, cmd.args[0].var_name).x;
-                int y = (cmd.args[1].type == ARG_NUMBER) ? cmd.args[1].value : get_variable(&symbol_table, cmd.args[1].var_name).y;
-                int z = (cmd.args[2].type == ARG_NUMBER) ? cmd.args[2].value : get_variable(&symbol_table, cmd.args[2].var_name).z;
-                current = new_coord(x, y, z);
+                // Caso especial: CREATE(p3) copia a coordenada inteira
+                if (cmd.arg_count == 1 && cmd.args[0].type == ARG_VARIABLE) {
+                    current = get_variable(&symbol_table, cmd.args[0].var_name);
+                } else {
+                    int x = (cmd.args[0].type == ARG_NUMBER) ? cmd.args[0].value : get_variable(&symbol_table, cmd.args[0].var_name).x;
+                    int y = (cmd.args[1].type == ARG_NUMBER) ? cmd.args[1].value : get_variable(&symbol_table, cmd.args[1].var_name).x;
+                    int z = (cmd.args[2].type == ARG_NUMBER) ? cmd.args[2].value : get_variable(&symbol_table, cmd.args[2].var_name).x;
+                    current = new_coord(x, y, z);
+                }
             } 
             else if (strcmp(cmd.command, "SCALE") == 0) {
                 int f = (cmd.args[0].type == ARG_NUMBER) ? cmd.args[0].value : get_variable(&symbol_table, cmd.args[0].var_name).x;
@@ -107,7 +117,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    dump_symbol_table(&symbol_table); // Função de debug
+    dump_symbol_table(&symbol_table);
     free(code);
     return 0;
 }

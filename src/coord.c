@@ -5,14 +5,13 @@ coordinate_t new_coord (int x, int y, int z) {
     return c; 
 };
 
-coordinate_t scale_coordinate(coordinate_t coord, int factor) { 
-    coordinate_t scaled = {
-        .x = coord.x * factor, 
-        .y = coord.y * factor, 
-        .z = coord.z * factor  
-    };
-    return scaled; 
-};
+coordinate_t scale_coordinate(coordinate_t c, int factor) {
+    coordinate_t result;
+    result.x = c.x * factor;
+    result.y = c.y * factor;
+    result.z = c.z * factor;
+    return result;
+}
 
 // Implementação da nova função
 coordinate_t add_coordinates(coordinate_t c1, coordinate_t c2) {
