@@ -20,7 +20,7 @@ OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 # Regra principal
 all: $(BIN_DIR) $(OBJ_DIR) $(TARGET)
-
+	./bin/programa parser.txt
 # Criação das pastas de build
 $(BIN_DIR) $(OBJ_DIR):
 	mkdir -p $@
@@ -38,3 +38,5 @@ clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
 .PHONY: all clean
+
+	
