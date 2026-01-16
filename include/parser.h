@@ -1,6 +1,6 @@
 #pragma once
 #include "lexer.h"
-#include "coord.h"
+#include "symbols.h" // Adicionado
 
 typedef struct {
     char command[32];
@@ -8,5 +8,5 @@ typedef struct {
     int arg_count;
 } command_node_t;
 
-// Função que analisa uma linha de comando completa
-command_node_t parse_line(char **input);
+// Agora aceita a tabela de símbolos como argumento
+command_node_t parse_line(char **input, symbol_table_t *table);

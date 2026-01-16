@@ -3,11 +3,16 @@
 #include <stdlib.h>
 #include "lexer.h"
 
-token_t get_next_token(char **input) {
-    // Pular espaços em branco
-    while (isspace(**input)) (*input)++;
+static int current_line = 1;
 
+token_t get_next_token(char **input) {
+    while (isspace(**input)) {
+        if (**input == '\n') current_line++; // O Lexer cuida disso
+        (*input)++;
+    }
+    
     token_t token;
+    token.line = current_line;
     if (**input == '\0') {
         token.type = TOKEN_EOF;
         return token;
@@ -38,7 +43,7 @@ token_t get_next_token(char **input) {
         return token;
     }
 
-    if (**input == '(' || **input == ')' || **input == ',') {
+    if (**input == '(' || **input == ')' || **input == ',' || **input == '=') {
         token.type = TOKEN_SYMBOL;
         token.text[0] = **input;
         token.text[1] = '\0';
