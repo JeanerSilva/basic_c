@@ -38,6 +38,14 @@ token_t get_next_token(char **input) {
         return token;
     }
 
+    if (**input == '(' || **input == ')' || **input == ',') {
+        token.type = TOKEN_SYMBOL;
+        token.text[0] = **input;
+        token.text[1] = '\0';
+        (*input)++;
+        return token;
+    }
+
     token.type = TOKEN_ERROR;
     (*input)++;
     return token;

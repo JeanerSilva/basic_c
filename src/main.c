@@ -1,25 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "parser.h"
 #include "coord.h"
 #include "lexer.h"
-#include "stack.h"
 
 int main(int argc, char *argv[]) {
-    // Verifica se o utilizador passou o nome do ficheiro script
     if (argc < 2) {
         printf("Uso: %s <arquivo.txt>\n", argv[0]);
         return 1;
     }
 
-    // 1. ABRIR O FICHEIRO SCRIPT
+    // 1. Abrir o arquivo
     FILE *file = fopen(argv[1], "r");
     if (!file) {
-        perror("Erro ao abrir o ficheiro");
+        perror("Erro ao abrir o arquivo");
         return 1;
     }
 
-    // 2. LER O CONTEÚDO PARA A MEMÓRIA
+    // 2. Ler o conteúdo do arquivo para a variável 'code'
     fseek(file, 0, SEEK_END);
     long length = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -28,62 +27,34 @@ int main(int argc, char *argv[]) {
         fclose(file);
         return 1;
     }
-
     fread(code, 1, length, file);
     code[length] = '\0';
     fclose(file);
 
-    // 3. INICIALIZAR A PILHA E O INTERPRETADOR
+    // 3. Processar o código usando o Parser
     char *ptr = code;
-    stack_t stack;
-    stack.int_top = -1;   // Inicializa topo de inteiros vazio
-    stack.coord_top = -1; // Inicializa topo de coordenadas vazio
-    
-    token_t t;
+    coordinate_t current = {0, 0, 0};
 
-    // 4. LOOP PRINCIPAL (INTERPRETADOR)
-    while ((t = get_next_token(&ptr)).type != TOKEN_EOF) {
-        
-        // Se for número, vai para a pilha de inteiros
-        if (t.type == TOKEN_NUMBER) {
-            push_int(&stack, t.value);
+    while (*ptr != '\0') {
+        // Pular espaços em branco ou quebras de linha entre comandos
+        while (*ptr == ' ' || *ptr == '\n' || *ptr == '\r' || *ptr == '\t') ptr++;
+        if (*ptr == '\0') break;
+
+        command_node_t cmd = parse_line(&ptr);
+
+        if (strcmp(cmd.command, "CREATE") == 0) {
+            current = new_coord(cmd.args[0], cmd.args[1], cmd.args[2]);
+            printf("Criado: (%d, %d, %d)\n", current.x, current.y, current.z);
         } 
-        
-        // Se for comando, executa a lógica
-        else if (t.type == TOKEN_COMMAND) {
-            
-            if (strcmp(t.text, "CREATE") == 0) {
-                // Tira 3 números da pilha para criar uma coordenada
-                int z = pop_int(&stack);
-                int y = pop_int(&stack);
-                int x = pop_int(&stack);
-                push_coord(&stack, new_coord(x, y, z));
-            } 
-            
-            else if (strcmp(t.text, "ADD") == 0) {
-                // Tira 2 coordenadas, soma-as e mete o resultado de volta
-                coordinate_t c2 = pop_coord(&stack);
-                coordinate_t c1 = pop_coord(&stack);
-                push_coord(&stack, add_coordinates(c1, c2));
-            }
-            
-            else if (strcmp(t.text, "SCALE") == 0) {
-                // Tira 1 número (fator) e 1 coordenada para escalar
-                int fator = pop_int(&stack);
-                coordinate_t c = pop_coord(&stack);
-                push_coord(&stack, scale_coordinate(c, fator));
-            }
-            
-            else if (strcmp(t.text, "PRINT") == 0) {
-                // Mostra a coordenada do topo sem a remover permanentemente
-                coordinate_t res = pop_coord(&stack);
-                printf("RESULTADO: x=%d, y=%d, z=%d\n", res.x, res.y, res.z);
-                push_coord(&stack, res); 
-            }
+        else if (strcmp(cmd.command, "SCALE") == 0) {
+            current = scale_coordinate(current, cmd.args[0]);
+            printf("Escalado para: (%d, %d, %d)\n", current.x, current.y, current.z);
+        }
+        else if (strcmp(cmd.command, "PRINT") == 0) {
+            printf("Coordenada Atual: x=%d, y=%d, z=%d\n", current.x, current.y, current.z);
         }
     }
 
-    // Limpeza final
     free(code);
     return 0;
 }
