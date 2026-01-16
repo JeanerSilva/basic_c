@@ -35,45 +35,38 @@ command_node_t parse_line(char **input, symbol_table_t *table) {
     while (1) {
         t = get_next_token(input);
         
-        // Verifica se chegamos ao fim dos argumentos sem ler nada PRINT()
+        // Se encontrar ')', o comando acabou (ex: PRINT())
         if (t.type == TOKEN_SYMBOL && t.text[0] == ')') {
             break;
         }
 
-        // Analisa se o argumento é um NÚMERO ou uma VARIÁVEL
         if (t.type == TOKEN_NUMBER) {
             node.args[node.arg_count].type = ARG_NUMBER;
             node.args[node.arg_count].value = t.value;
             node.arg_count++;
         } 
         else if (t.type == TOKEN_COMMAND) {
-            // Se o Lexer leu como texto, tratamos como referência a variável
+            // Aqui p1, p2, fator_escala, etc., são capturados
             node.args[node.arg_count].type = ARG_VARIABLE;
             strncpy(node.args[node.arg_count].var_name, t.text, 31);
             node.arg_count++;
         }
         else {
-            report_error("Argumento invalido. Esperado numero ou variavel.", t.line);
+            char msg[128]; // Aumentado de 64 para 128
+            snprintf(msg, sizeof(msg), "Argumento invalido '%s'. Esperado numero ou variavel.", t.text);
+            report_error(msg, t.line);
         }
 
-        // Verifica o próximo token: pode ser ',' (continua) ou ')' (encerra)
+        // Após ler um argumento, precisamos verificar o que vem depois
         t = get_next_token(input);
+        
         if (t.type == TOKEN_SYMBOL && t.text[0] == ')') {
-            break;
+            break; // Fim correto dos argumentos
         }
         
         if (t.type != TOKEN_SYMBOL || t.text[0] != ',') {
-            report_error("Esperado ',' ou ')' entre argumentos.", t.line);
-        }
-
-        // Limite de segurança para não estourar o array de argumentos
-        if (node.arg_count >= 3) {
-            // Consome o ')' final se o usuário passou 3 argumentos
-            t = get_next_token(input);
-            if (t.type != TOKEN_SYMBOL || t.text[0] != ')') {
-                report_error("Excesso de argumentos ou falta de ')'.", t.line);
-            }
-            break;
+            // Erro se não houver vírgula separando os argumentos
+            report_error("Esperado ',' ou ')' entre os argumentos.", t.line);
         }
     }
     

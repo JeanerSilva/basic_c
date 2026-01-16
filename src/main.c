@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "symbols.h" // Deve vir antes do parser se o parser usa tipos dele
-#include "lexer.h"
 #include "parser.h"
 #include "coord.h"
+#include "lexer.h"
+#include "symbols.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 1. Carregamento do arquivo para a memória
+    // 1. Carregamento do arquivo
     FILE *file = fopen(argv[1], "r");
     if (!file) {
         perror("Erro ao abrir arquivo");
@@ -27,58 +27,64 @@ int main(int argc, char *argv[]) {
     code[length] = '\0';
     fclose(file);
 
-    // 2. Inicialização do ambiente
+    // 2. Estado do Interpretador
     char *ptr = code;
     symbol_table_t symbol_table = { .count = 0 };
     coordinate_t current = {0, 0, 0};
 
     while (*ptr != '\0') {
-        // Pula espaços e linhas vazias
         while (*ptr && isspace(*ptr)) ptr++;
         if (*ptr == '\0') break;
 
         char *ptr_antes = ptr;
         token_t t = get_next_token(&ptr);
 
-        // 3. Verifica se o próximo token é um '=' (Atribuição)
+        // Verifica se é uma atribuição (ex: p1 = ...)
         char *ptr_temp = ptr;
         token_t next = get_next_token(&ptr_temp);
 
         if (next.type == TOKEN_SYMBOL && next.text[0] == '=') {
             char var_name[32];
             strncpy(var_name, t.text, 31);
-            ptr = ptr_temp; // Avança o ponteiro para depois do '='
+            ptr = ptr_temp; 
 
-            // Espia o que vem após o '=' para decidir se é número ou comando
-            char *ptr_valor = ptr;
-            token_t v_tok = get_next_token(&ptr_valor);
+            // Espia se depois do '=' vem um número direto (ex: fator = 5)
+            char *ptr_check = ptr;
+            token_t val_check = get_next_token(&ptr_check);
 
-            if (v_tok.type == TOKEN_NUMBER) {
-                // Caso: fator = 5
-                coordinate_t c = {v_tok.value, 0, 0}; 
-                set_variable(&symbol_table, var_name, c);
-                ptr = ptr_valor; 
-                printf("Variavel escalar '%s' definida como %d\n", var_name, v_tok.value);
+            if (val_check.type == TOKEN_NUMBER) {
+                coordinate_t scalar = {val_check.value, 0, 0};
+                set_variable(&symbol_table, var_name, scalar);
+                ptr = ptr_check;
+                printf("Definido escalar: %s = %d\n", var_name, val_check.value);
             } 
             else {
-                // Caso: p1 = CREATE(...)
-                ptr = ptr_temp; // Reset para o parser ler o comando
+                // Atribuição de resultado de comando (ex: p1 = CREATE(1,2,3))
+                ptr = ptr_temp; 
                 command_node_t cmd = parse_line(&ptr, &symbol_table);
+                
                 if (strcmp(cmd.command, "CREATE") == 0) {
-                    // Resolvemos os argumentos do CREATE
-                    int vals[3] = {0,0,0};
-                    for(int i=0; i<3; i++) {
-                        if(cmd.args[i].type == ARG_NUMBER) vals[i] = cmd.args[i].value;
-                        else vals[i] = get_variable(&symbol_table, cmd.args[i].var_name).x;
+                    // Resolve argumentos (números ou variáveis)
+                    int v[3] = {0,0,0};
+                    for(int i=0; i<3 && i < cmd.arg_count; i++) {
+                        v[i] = (cmd.args[i].type == ARG_NUMBER) ? 
+                                cmd.args[i].value : get_variable(&symbol_table, cmd.args[i].var_name).x;
                     }
-                    current = new_coord(vals[0], vals[1], vals[2]);
+                    current = new_coord(v[0], v[1], v[2]);
                     set_variable(&symbol_table, var_name, current);
-                    printf("Variavel '%s' criada em (%d, %d, %d)\n", var_name, current.x, current.y, current.z);
+                    printf("Variavel '%s' criada: (%d, %d, %d)\n", var_name, current.x, current.y, current.z);
+                }
+                else if (strcmp(cmd.command, "ADD") == 0) {
+                    coordinate_t c1 = get_variable(&symbol_table, cmd.args[0].var_name);
+                    coordinate_t c2 = get_variable(&symbol_table, cmd.args[1].var_name);
+                    current = add_coordinates(c1, c2);
+                    set_variable(&symbol_table, var_name, current);
+                    printf("Variavel '%s' (SOMA): (%d, %d, %d)\n", var_name, current.x, current.y, current.z);
                 }
             }
         } 
         else {
-            // 4. Caso: Comando Direto (sem atribuição)
+            // Comando Direto (ex: SCALE(2), PRINT(p1))
             ptr = ptr_antes; 
             command_node_t cmd = parse_line(&ptr, &symbol_table);
 
@@ -89,20 +95,19 @@ int main(int argc, char *argv[]) {
                 current = new_coord(x, y, z);
             } 
             else if (strcmp(cmd.command, "SCALE") == 0) {
-                int fator = (cmd.args[0].type == ARG_NUMBER) ? cmd.args[0].value : get_variable(&symbol_table, cmd.args[0].var_name).x;
-                current = scale_coordinate(current, fator);
-                printf("Escalado por %d: Novo estado (%d, %d, %d)\n", fator, current.x, current.y, current.z);
+                int f = (cmd.args[0].type == ARG_NUMBER) ? cmd.args[0].value : get_variable(&symbol_table, cmd.args[0].var_name).x;
+                current = scale_coordinate(current, f);
+                printf("Escalado por %d: (%d, %d, %d)\n", f, current.x, current.y, current.z);
             } 
             else if (strcmp(cmd.command, "PRINT") == 0) {
-                coordinate_t target = current;
-                if (cmd.arg_count > 0 && cmd.args[0].type == ARG_VARIABLE) {
-                    target = get_variable(&symbol_table, cmd.args[0].var_name);
-                }
-                printf("RESULTADO: x=%d, y=%d, z=%d\n", target.x, target.y, target.z);
+                coordinate_t p = (cmd.arg_count > 0 && cmd.args[0].type == ARG_VARIABLE) ? 
+                                 get_variable(&symbol_table, cmd.args[0].var_name) : current;
+                printf("RESULTADO: x=%d, y=%d, z=%d\n", p.x, p.y, p.z);
             }
         }
     }
 
+    dump_symbol_table(&symbol_table); // Função de debug
     free(code);
     return 0;
 }

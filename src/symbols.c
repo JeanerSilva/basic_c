@@ -20,5 +20,7 @@ coordinate_t get_variable(symbol_table_t *table, const char *name) {
             return table->vars[i].coord;
         }
     }
-    return (coordinate_t){0, 0, 0}; // Retorna zero se não achar
+    // Se não achar, retorna zerado (ou você pode imprimir um erro aqui)
+    coordinate_t empty = {0, 0, 0};
+    return empty;
 }
