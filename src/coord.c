@@ -1,16 +1,25 @@
 #include "coord.h"
 
-// Função interna que será usada como "método"
-static coordinate_t scale_impl(coordinate_t *self, int factor) {
-    return new_coord(self->x * factor, self->y * factor, self->z * factor);
-}
+coordinate_t new_coord (int x, int y, int z) { 
+    coordinate_t c = { .x = x, .y = y, .z = z }; 
+    return c; 
+};
 
-coordinate_t new_coord(int x, int y, int z) {
-    coordinate_t c;
-    c.x = x;
-    c.y = y;
-    c.z = z;
-    // Atribuindo a função ao "método"
-    c.scale = scale_impl;
-    return c;
+coordinate_t scale_coordinate(coordinate_t coord, int factor) { 
+    coordinate_t scaled = {
+        .x = coord.x * factor, 
+        .y = coord.y * factor, 
+        .z = coord.z * factor  
+    };
+    return scaled; 
+};
+
+// Implementação da nova função
+coordinate_t add_coordinates(coordinate_t a, coordinate_t b) {
+    coordinate_t result = {
+        .x = a.x + b.x,
+        .y = a.y + b.y,
+        .z = a.z + b.z
+    };
+    return result;
 }
