@@ -1,4 +1,0 @@
-10 10 10 CREATE  // Cria coord1 e guarda na pilha
-20 20 20 CREATE  // Cria coord2 e guarda na pilha
-ADD              // Soma as duas
-PRINT            // Resultado esperado: x=30, y=30, z=30

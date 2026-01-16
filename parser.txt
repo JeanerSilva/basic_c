@@ -2,6 +2,5 @@ fator = 2
 p1 = CREATE(10, 20, 30)
 p2 = CREATE(5, 5, 5)
 p3 = ADD(p1, p2)
-CREATE(p3)
 SCALE(fator)
 PRINT()

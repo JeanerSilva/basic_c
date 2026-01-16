@@ -13,12 +13,12 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 1. Carregamento do arquivo
     FILE *file = fopen(argv[1], "r");
     if (!file) {
         perror("Erro ao abrir arquivo");
         return 1;
     }
+
     fseek(file, 0, SEEK_END);
     long length = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -27,53 +27,48 @@ int main(int argc, char *argv[]) {
     code[length] = '\0';
     fclose(file);
 
-    // 2. Estado do Interpretador
     char *ptr = code;
     symbol_table_t symbol_table = { .count = 0 };
     coordinate_t current = {0, 0, 0};
 
     while (*ptr != '\0') {
-        // Pular espaços e linhas vazias
+        // Pula espaços iniciais para não ler tokens errados
         while (*ptr && isspace(*ptr)) ptr++;
         if (*ptr == '\0') break;
 
         char *ptr_antes = ptr;
         token_t t = get_next_token(&ptr);
 
-        // 3. Verifica se o próximo token é '=' (Atribuição)
+        // Espia se o próximo token é '='
         char *ptr_temp = ptr;
         token_t next = get_next_token(&ptr_temp);
 
         if (next.type == TOKEN_SYMBOL && next.text[0] == '=') {
+            // CASO ATRIBUIÇÃO: var = ...
             char var_name[32];
             strncpy(var_name, t.text, 31);
             var_name[31] = '\0';
-            ptr = ptr_temp; // Avança para depois do '='
+            ptr = ptr_temp; // Avança ponteiro para depois do '='
 
-            // Espia se é um número direto (ex: fator = 5)
             char *ptr_check = ptr;
-            token_t val_check = get_next_token(&ptr_check);
+            token_t v_tok = get_next_token(&ptr_check);
 
-            if (val_check.type == TOKEN_NUMBER) {
-                coordinate_t scalar = {val_check.value, 0, 0};
+            if (v_tok.type == TOKEN_NUMBER) {
+                // Atribuição simples: fator = 5
+                coordinate_t scalar = {v_tok.value, 0, 0};
                 set_variable(&symbol_table, var_name, scalar);
                 ptr = ptr_check;
-                printf("Definido escalar: %s = %d\n", var_name, val_check.value);
-            } 
-            else {
-                // Atribuição de resultado de comando (p1 = CREATE ou p3 = ADD)
+                printf("Definido escalar: %s = %d\n", var_name, v_tok.value);
+            } else {
+                // Atribuição de comando: p1 = CREATE(...)
                 ptr = ptr_temp; 
                 command_node_t cmd = parse_line(&ptr, &symbol_table);
                 
                 if (strcmp(cmd.command, "CREATE") == 0) {
-                    int v[3] = {0,0,0};
-                    for(int i=0; i < 3 && i < cmd.arg_count; i++) {
-                        if (cmd.args[i].type == ARG_NUMBER) {
-                            v[i] = cmd.args[i].value;
-                        } else {
-                            // Se for variável dentro do CREATE, pega o X
-                            v[i] = get_variable(&symbol_table, cmd.args[i].var_name).x;
-                        }
+                    int v[3] = {0, 0, 0};
+                    for(int i = 0; i < 3 && i < cmd.arg_count; i++) {
+                        v[i] = (cmd.args[i].type == ARG_NUMBER) ? 
+                                cmd.args[i].value : get_variable(&symbol_table, cmd.args[i].var_name).x;
                     }
                     current = new_coord(v[0], v[1], v[2]);
                     set_variable(&symbol_table, var_name, current);
@@ -87,14 +82,12 @@ int main(int argc, char *argv[]) {
                     printf("Variavel '%s' (SOMA): (%d, %d, %d)\n", var_name, current.x, current.y, current.z);
                 }
             }
-        } 
-        else {
-            // 4. Comando Direto (ex: SCALE(fator), PRINT(p3))
-            ptr = ptr_antes; 
+        } else {
+            // CASO COMANDO DIRETO: CREATE(...), SCALE(...), PRINT(...)
+            ptr = ptr_antes;
             command_node_t cmd = parse_line(&ptr, &symbol_table);
 
             if (strcmp(cmd.command, "CREATE") == 0) {
-                // Caso especial: CREATE(p3) copia a coordenada inteira
                 if (cmd.arg_count == 1 && cmd.args[0].type == ARG_VARIABLE) {
                     current = get_variable(&symbol_table, cmd.args[0].var_name);
                 } else {
@@ -105,7 +98,8 @@ int main(int argc, char *argv[]) {
                 }
             } 
             else if (strcmp(cmd.command, "SCALE") == 0) {
-                int f = (cmd.args[0].type == ARG_NUMBER) ? cmd.args[0].value : get_variable(&symbol_table, cmd.args[0].var_name).x;
+                int f = (cmd.args[0].type == ARG_NUMBER) ? 
+                         cmd.args[0].value : get_variable(&symbol_table, cmd.args[0].var_name).x;
                 current = scale_coordinate(current, f);
                 printf("Escalado por %d: (%d, %d, %d)\n", f, current.x, current.y, current.z);
             } 
