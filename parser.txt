@@ -1,3 +1,4 @@
+fator = 5
 p1 = CREATE(10, 20, 30)
-SCALE(2)
+SCALE(fator)
 PRINT()
